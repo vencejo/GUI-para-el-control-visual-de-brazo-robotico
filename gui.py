@@ -75,18 +75,6 @@ class GUI(Frame):
 		miniMenu.add_command(label='Zoom -...', command=self.aunPorHacer)
 		miniMenu.add_command(label='Capturar Imagen...', command=self.quit)
 		self.menubar.add_cascade(label='Imagen', underline=0, menu=miniMenu)
-	
-	def guardaAjustes(self):
-		archivo = asksaveasfilename(defaultextension = 'json',
-									initialdir='/imagen/MisAjustes')
-		self.ajustes.guardaAjustes(archivo)
-	
-	
-	
-		
-	def conversorRGBaHEX(self):
-		rgb = (self.nivelR.get(),self.nivelG.get(),self.nivelB.get())
-		return '#' + "".join(map(chr, rgb)).encode('hex')
 			
 	def aunPorHacer(self):
 		print "Funcion aun por implementar"
@@ -106,21 +94,46 @@ class GUI(Frame):
 		
 	def creaAreaVisorAngulos(self,frame):
 		self.areaVisorAngulos = Frame(frame, cursor='hand2', relief=SUNKEN, bd=2)
-		self.areaVisorAngulos.pack(side=LEFT, fill=X)
-		self.creaVisorAngulos(self.areaVisorAngulos )
+		self.areaVisorAngulos.pack(side=TOP, fill=X)
+		self.creaVisoresAngulos(self.areaVisorAngulos )
 			
-	def creaVisorAngulos(self, frame):
-		self.visorAngulos = Label(frame, text='Area visor Angulos')
-		self.visorAngulos.pack(side=LEFT, fill=X)
-		
+	def creaVisoresAngulos(self, frame):
+		self.visorAngulo = []
+		for i in range(3):
+			visor = Tkinter.Message(frame)
+			visor.config(font=('times', 8), width = 70)
+			visor.pack(side=LEFT, fill=X, expand=YES)
+			self.visorAngulo.append(visor)
+			
 	def creaAreaControlesAproximados(self,frame):
 		self.areaControlesAproximados = Frame(frame, cursor='hand2', relief=SUNKEN, bd=2)
 		self.areaControlesAproximados.pack(side=LEFT, fill=X)
 		self.creaControlesAproximados(self.areaControlesAproximados)
 		
 	def creaControlesAproximados(self, frame):
-		self.controlesAproximados = Label(frame, text='Area Controles aproximados')
-		self.controlesAproximados.pack(side=LEFT, fill=X)
+		self.tiempoMovimiento = DoubleVar()
+		self.deslizableTiempo = Scale(frame, label = 'tiempo de movimiento ',
+											variable=self.tiempoMovimiento,
+											from_=0, to=2,
+											tickinterval=0.25,
+											resolution=0.05,
+											orient='horizontal',
+											length=320)
+		self.deslizableTiempo.pack(side=TOP, fill=X)
+		self.tiempoMovimiento.set(0.5)
+		
+		self.ponerSeparadores( frame, 1)
+		for i in range(3):
+			Button(frame, text = ' - ',command=lambda:self.disminuyeAngulo(i+1)).pack(side=LEFT)		
+			Label(frame, text='Angulo ' + str(i)).pack(side=LEFT)
+			Button(frame, text = ' + ',command=lambda:self.aumentaAngulo(i+1)).pack(side=LEFT)
+			Label(frame, text='  ').pack(side=LEFT)
+		
+	def aumentaAngulo(self, numAngulo):
+		print("Aumentando angulo {}".format(numAngulo))	
+		
+	def disminuyeAngulo(self, numAngulo):
+		print("Disminuyendo angulo {}".format(numAngulo))
 		
 	def creaAreaControlesExactos(self,frame):
 		self.areaControlesExactos = Frame(frame, cursor='hand2', relief=SUNKEN, bd=2)
@@ -158,7 +171,7 @@ class GUI(Frame):
 	def actualizaVisorImagen(self):
 		self.tiempoInicial = time.time()
 		
-		img = self.imagenTratada.capturaTrataYFiltraBlobsDeImagen('estructura')
+		img , self.listaAngulos = self.imagenTratada.capturaTrataYFiltraBlobsDeImagen()
 												  
 		photo = ImageTk.PhotoImage(img.getPIL())
 		self.visorImagen.photo = photo
@@ -168,14 +181,22 @@ class GUI(Frame):
 		self.tiempoDeEjecucion = self.tiempoFinal - self.tiempoInicial
 		#print (self.tiempoDeEjecucion)
 		
-		self.visorImagen.after(10, self.actualizaVisorImagen)
+		self.visorImagen.after(10, self.actualizaVisorAngulos)
 		
 	
 		
-	def actualizaVisorMensajes(self):
-		texto = "Tiempo de procesado {0:0.2f} seg ".format(self.tiempoDeEjecucion)
-		self.mensaje.config(text=texto)
-		self.actualizaAjustes()
+	def actualizaVisorAngulos(self):
+		if self.listaAngulos == []:
+			for i in range(3):
+				texto = "Angulo {0}: --- grados ".format(str(i))
+				self.visorAngulo[i].config(text=texto)
+		else:
+			for i, angulo in enumerate(self.listaAngulos):
+				texto = "Angulo {0}: {1:0.0f} grados ".format(str(i), angulo)
+				#print(texto)
+				self.visorAngulo[i].config(text=texto)
+				
+		self.actualizaVisorImagen()
 		
 	# ------------------------------------------------------------------
 	# Fin de un ciclo de ejecucion

@@ -51,7 +51,7 @@ class ImagenTratada():
 		self.trataImagen()
 		return Image(self.rutaImagenTratada_Fase1)
 		
-	def encuentraYFiltraBlobs(self, tipoDibujo):
+	def encuentraYFiltraBlobs(self):
 		
 		imagenBlobs = Image(self.rutaImagenTratada_Fase2).copy()
 		blobs = imagenBlobs.findBlobs()
@@ -68,16 +68,13 @@ class ImagenTratada():
 			# Busca los blobs de forma circular , los blobs que pasan el filtro
 			# se guardan en la lista self.articulaciones
 			blobs = self.filtroPorForma(blobs)
-			
-			if tipoDibujo == 'blobs':
-				self.dibujaBlobs(blobs)
-			elif tipoDibujo == 'estructura':
-				self.dibujaEstructura(imagenBlobs)
+	
+			listaAngulos = self.encuentraYDibujaAngulos(imagenBlobs)
 		
 		# La imagen tratada tiene que ser guardada porque sino no funciona
 		# la integracion con Tkinter
 		imagenBlobs.save(self.rutaImagenBlobs)
-		return Image(self.rutaImagenBlobs)
+		return  listaAngulos
 		
 	def filtroPorArea(self, blobs):
 		return blobs.filter((blobs.area()> self.ajustes.areaMin) & (blobs.area()< self.ajustes.areaMax))
@@ -104,20 +101,23 @@ class ImagenTratada():
 				self.articulaciones.append((blob.x, blob.y))
                 self.blobsFiltradosPorForma.append(blob)
                 
-	def capturaTrataYFiltraBlobsDeImagen(self,tipoDibujo):
+	def capturaTrataYFiltraBlobsDeImagen(self):
 		img = self.capturaImagen()
 		self.trataImagen()
-		self.encuentraYFiltraBlobs(tipoDibujo)
-		return Image(self.rutaImagenBlobs)
+		listaAngulos = self.encuentraYFiltraBlobs()
+		return (Image(self.rutaImagenBlobs), listaAngulos)
 	
 	def dibujaBlobs(self, blobs):
 		if self.todosLosCandidatos:
 				for blob in self.todosLosCandidatos:
 						blob.draw(width=2, color=Color.YELLOW)
 			
-	def dibujaEstructura(self, img):
+	def encuentraYDibujaAngulos(self, img):
+		""" Ademas de dibujar la estructura de los huesos del brazo
+		devuelve los angulos de dichos huesos con la horizontal """
+		angulosHuesos = []
 		if self.articulaciones != []:
-                        self.articulaciones = aux.ordenaListaPorDistanciaApunto(self.articulaciones, [0,480])
+			self.articulaciones = aux.ordenaListaPorDistanciaApunto(self.articulaciones, [0,480])
 			puntoInicial = self.articulaciones.pop()
 			img.dl().circle(puntoInicial, 10, Color.BLUE, width=5)
 			while self.articulaciones != []:
@@ -125,8 +125,14 @@ class ImagenTratada():
 				img.dl().line(puntoInicial, p, Color.BLUE, width=5)
 				img.dl().circle(p, 10, Color.BLUE, width=5)
 				img.applyLayers()
-				self.angulosHuesos.append(aux.anguloLineaEntreDosPuntos(p, puntoInicial))
-				puntoInicial = p	
+				angulosHuesos.append(aux.anguloLineaEntreDosPuntos(p, puntoInicial))
+				puntoInicial = p
+				
+		if len(angulosHuesos) == 3:
+			return angulosHuesos
+		else:
+			return []
+				
 		
 	def depuracion(self):
 		self.enDepuracion = True
