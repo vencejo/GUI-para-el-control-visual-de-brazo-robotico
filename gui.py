@@ -9,6 +9,7 @@ from tkColorChooser import askcolor
 from tkMessageBox import *
 import ImageTk
 from imagen.tratamientoImagen import ImagenTratada
+from brazo.acciones import Acciones
 import time
 
 class GUI(Frame):
@@ -19,6 +20,7 @@ class GUI(Frame):
 		self.tiempoFinal = 0
 		self.tiempoDeEjecucion = 0
 		self.imagenTratada = ImagenTratada()
+		self.acciones = Acciones()
 		self.creaElementos()
 		self.inicioCicloEjecucion()
 		self.master.title('Ajustes Visuales para el Control Experimental Brazo Robotico')
@@ -97,6 +99,7 @@ class GUI(Frame):
 		self.areaVisorAngulos.pack(side=TOP, fill=X)
 		self.creaVisoresAngulos(self.areaVisorAngulos )
 			
+			
 	def creaVisoresAngulos(self, frame):
 		self.visorAngulo = []
 		for i in range(3):
@@ -111,6 +114,24 @@ class GUI(Frame):
 		self.creaControlesAproximados(self.areaControlesAproximados)
 		
 	def creaControlesAproximados(self, frame):
+		#Empiezo colocando cosas por la parte de abajo del frame 
+		# para que el pack() no me de problemas
+		areaAux = Frame(frame, cursor='hand2', bd=2)
+		areaAux.pack(side=BOTTOM, fill=X)	
+		self.ponerSeparadores(areaAux, 1)
+		Button(areaAux, text = ' - ',command=lambda:self.mueveBase('izq')).pack(side=LEFT)
+		Label(areaAux, text='Base ' ).pack(side=LEFT)
+		Button(areaAux, text = ' + ',command=lambda:self.mueveBase('der')).pack(side=LEFT)
+		Label(areaAux, text='  ').pack(side=LEFT)
+		Button(areaAux, text = ' - ',command=lambda:self.muevePinza('cerrar')).pack(side=LEFT)
+		Label(areaAux, text='Pinza ' ).pack(side=LEFT)
+		Button(areaAux, text = ' + ',command=lambda:self.muevePinza('abrir')).pack(side=LEFT)
+		Label(areaAux, text='  ').pack(side=LEFT)
+		Button(areaAux, text = ' - ',command=lambda:self.luz('apagar')).pack(side=LEFT)
+		Label(areaAux, text='Luz ' ).pack(side=LEFT)
+		Button(areaAux, text = ' + ',command=lambda:self.luz('encender')).pack(side=LEFT)
+		Label(areaAux, text='  ').pack(side=LEFT)
+		
 		self.tiempoMovimiento = DoubleVar()
 		self.deslizableTiempo = Scale(frame, label = 'tiempo de movimiento ',
 											variable=self.tiempoMovimiento,
@@ -122,19 +143,69 @@ class GUI(Frame):
 		self.deslizableTiempo.pack(side=TOP, fill=X)
 		self.tiempoMovimiento.set(0.5)
 		
-		self.ponerSeparadores( frame, 1)
-		for i in range(3):
-			Button(frame, text = ' - ',command=lambda:self.disminuyeAngulo(i+1)).pack(side=LEFT)		
-			Label(frame, text='Angulo ' + str(i)).pack(side=LEFT)
-			Button(frame, text = ' + ',command=lambda:self.aumentaAngulo(i+1)).pack(side=LEFT)
-			Label(frame, text='  ').pack(side=LEFT)
+		self.ponerSeparadores(frame, 1)
+		self.ponerBotonesAngulo(frame,1)
+		self.ponerBotonesAngulo(frame,2)
+		self.ponerBotonesAngulo(frame,3)
+			
+	def ponerBotonesAngulo(self,frame, numAngulo):
+		Button(frame, text = ' - ',command=lambda:self.disminuyeAngulo(numAngulo)).pack(side=LEFT)
+		Label(frame, text='Angulo ' + str(numAngulo)).pack(side=LEFT)
+		Button(frame, text = ' + ',command=lambda:self.aumentaAngulo(numAngulo)).pack(side=LEFT)
+		Label(frame, text='  ').pack(side=LEFT)
 		
 	def aumentaAngulo(self, numAngulo):
-		print("Aumentando angulo {}".format(numAngulo))	
+		print("Aumentando angulo {} con un tiempo {}".format(numAngulo, self.tiempoMovimiento.get()))	
+		self.acciones.tiempo = self.tiempoMovimiento.get()	
+		if numAngulo == 3:
+			self.acciones.actuar('subir-hombro')
+		elif numAngulo == 2:
+			self.acciones.actuar('subir-codo')
+		elif numAngulo == 1:
+			self.acciones.actuar('subir-munneca')
+		else:
+			pass
+			
+	def mueveBase(self, comando):
+		self.acciones.tiempo = self.tiempoMovimiento.get()
+		if comando == 'izq':
+			self.acciones.actuar('base-izquierda')
+		elif comando == 'der':
+			self.acciones.actuar('base-derecha')
+		else:
+			pass
+			
+	def muevePinza(self, comando):
+		self.acciones.tiempo = self.tiempoMovimiento.get()
+		if comando == 'abrir':
+			self.acciones.actuar('abrir-pinza')
+		elif comando == 'cerrar':
+			self.acciones.actuar('cerrar-pinza')
+		else:
+			pass
+			
+	def luz(self, comando):
+		self.acciones.tiempo = self.tiempoMovimiento.get()
+		if comando == 'encender':
+			self.acciones.actuar('encender-luz')
+		elif comando == 'apagar':
+			self.acciones.actuar('apagar-luz')
+		else:
+			pass
+			
 		
 	def disminuyeAngulo(self, numAngulo):
-		print("Disminuyendo angulo {}".format(numAngulo))
-		
+		print("Disminuyendo angulo {} con un tiempo {}".format(numAngulo, self.tiempoMovimiento.get()))
+		self.acciones.tiempo = self.tiempoMovimiento.get()	
+		if numAngulo == 3:
+			self.acciones.actuar('bajar-hombro')
+		elif numAngulo == 2:
+			self.acciones.actuar('bajar-codo')
+		elif numAngulo == 1:
+			self.acciones.actuar('bajar-munneca')
+		else:
+			pass
+			
 	def creaAreaControlesExactos(self,frame):
 		self.areaControlesExactos = Frame(frame, cursor='hand2', relief=SUNKEN, bd=2)
 		self.areaControlesExactos.pack(side=LEFT, fill=X)
@@ -188,12 +259,11 @@ class GUI(Frame):
 	def actualizaVisorAngulos(self):
 		if self.listaAngulos == []:
 			for i in range(3):
-				texto = "Angulo {0}: --- grados ".format(str(i))
+				texto = "Angulo {0}: --- grados ".format(str(i+1))
 				self.visorAngulo[i].config(text=texto)
 		else:
 			for i, angulo in enumerate(self.listaAngulos):
-				texto = "Angulo {0}: {1:0.0f} grados ".format(str(i), angulo)
-				#print(texto)
+				texto = "Angulo {0}: {1:0.0f} grados ".format(str(i+1), angulo)
 				self.visorAngulo[i].config(text=texto)
 				
 		self.actualizaVisorImagen()
