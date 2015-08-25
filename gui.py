@@ -18,7 +18,12 @@ class GUI(Frame):
 		self.pack(expand=YES, fill=BOTH)
 		self.tiempoInicial = 0
 		self.tiempoFinal = 0
-		self.tiempoDeEjecucion = 0
+		self.tiempoDeTratamientoImagen = 0
+		self.enMovimiento = False
+		self.tiempoInicioMovimiento = 0
+		self.angulosActuales = []
+		self.angulosAnteriores = []
+		self.diferenciaAngulos = [0,0,0]
 		self.imagenTratada = ImagenTratada()
 		self.acciones = Acciones()
 		self.creaElementos()
@@ -95,18 +100,41 @@ class GUI(Frame):
 		self.visorImagen.pack(side=LEFT, fill=X)
 		
 	def creaAreaVisorAngulos(self,frame):
-		self.areaVisorAngulos = Frame(frame, cursor='hand2', relief=SUNKEN, bd=2)
-		self.areaVisorAngulos.pack(side=TOP, fill=X)
-		self.creaVisoresAngulos(self.areaVisorAngulos )
+		self.areaVisorAngulosActuales = Frame(frame, cursor='hand2', relief=SUNKEN, bd=2)
+		self.areaVisorAngulosActuales.pack(side=TOP, fill=X)
+		self.creaVisoresAngulosActuales(self.areaVisorAngulosActuales )
+		
+		self.ponerSeparadores( frame, 1)
+		
+		self.areaVisorAngulosAnteriores = Frame(frame, cursor='hand2', relief=SUNKEN, bd=2)
+		self.areaVisorAngulosAnteriores.pack(side=TOP, fill=X)
+		self.creaVisoresAngulosAnteriores(self.areaVisorAngulosAnteriores )
+		
+		self.ponerSeparadores( frame, 1)
+		
+		self.areaVisorAngulosDiferencia = Frame(frame, cursor='hand2', relief=SUNKEN, bd=2)
+		self.areaVisorAngulosDiferencia.pack(side=TOP, fill=X)
+		self.creaVisoresAngulosDiferencia(self.areaVisorAngulosDiferencia )
 			
 			
-	def creaVisoresAngulos(self, frame):
-		self.visorAngulo = []
+	def creaVisoresAngulosActuales(self, frame):
+		self.visorAngulosActuales = []
+		self.creaVisorAngulosGenerico(self.visorAngulosActuales, 'Angulos Actuales', frame)
+			
+	def creaVisoresAngulosAnteriores(self, frame):
+		self.visorAngulosAnteriores = []
+		self.creaVisorAngulosGenerico(self.visorAngulosAnteriores,'Angulos Anteriores', frame)
+			
+	def creaVisoresAngulosDiferencia(self, frame):
+		self.visorAngulosDiferencia = []
+		self.creaVisorAngulosGenerico(self.visorAngulosDiferencia, 'Diferencia Angulos', frame)
+			
+	def creaVisorAngulosGenerico(self, visorAngulos,texto, frame):
 		for i in range(3):
 			visor = Tkinter.Message(frame)
-			visor.config(font=('times', 8), width = 70)
+			visor.config(font=('times', 8), width = 70, text = texto)
 			visor.pack(side=LEFT, fill=X, expand=YES)
-			self.visorAngulo.append(visor)
+			visorAngulos.append(visor)
 			
 	def creaAreaControlesAproximados(self,frame):
 		self.areaControlesAproximados = Frame(frame, cursor='hand2', relief=SUNKEN, bd=2)
@@ -154,57 +182,80 @@ class GUI(Frame):
 		Button(frame, text = ' + ',command=lambda:self.aumentaAngulo(numAngulo)).pack(side=LEFT)
 		Label(frame, text='  ').pack(side=LEFT)
 		
-	def aumentaAngulo(self, numAngulo):
-		print("Aumentando angulo {} con un tiempo {}".format(numAngulo, self.tiempoMovimiento.get()))	
-		self.acciones.tiempo = self.tiempoMovimiento.get()	
-		if numAngulo == 3:
-			self.acciones.actuar('subir-hombro')
-		elif numAngulo == 2:
-			self.acciones.actuar('subir-codo')
-		elif numAngulo == 1:
-			self.acciones.actuar('subir-munneca')
+	def iniciarMovimiento(self):
+		""" Solo inicia el movimieno si tiene una lista de angulos actuales buena 
+		Devuelve True si ha podido iniciar el movimiento y false en caso contrario"""
+		if self.angulosActuales == []:
+			print("No se puede iniciar el movimiento al no disponer de los angulos iniciales")
+			return False
 		else:
-			pass
+			self.enMovimiento = True
+			self.tiempoInicioMovimiento = time.time()
+			self.angulosAnteriores = self.angulosActuales[:] # Copia una lista en otra
+			return True
+		
+	def finalizarMovimiento(self):
+		self.enMovimiento = False
+		for i in range(3):
+			self.diferenciaAngulos[i] = abs(self.angulosAnteriores[i] - self.angulosActuales[i])
+		
+		
+	def aumentaAngulo(self, numAngulo):
+		if self.iniciarMovimiento():
+			print("Aumentando angulo {} con un tiempo {}".format(numAngulo, self.tiempoMovimiento.get()))	
+			self.acciones.tiempo = self.tiempoMovimiento.get()	
+			if numAngulo == 3:
+				self.acciones.actuar('subir-hombro')
+			elif numAngulo == 2:
+				self.acciones.actuar('subir-codo')
+			elif numAngulo == 1:
+				self.acciones.actuar('subir-munneca')
+			else:
+				pass
 			
 	def mueveBase(self, comando):
-		self.acciones.tiempo = self.tiempoMovimiento.get()
-		if comando == 'izq':
-			self.acciones.actuar('base-izquierda')
-		elif comando == 'der':
-			self.acciones.actuar('base-derecha')
-		else:
-			pass
+		if self.iniciarMovimiento():
+			self.acciones.tiempo = self.tiempoMovimiento.get()
+			if comando == 'izq':
+				self.acciones.actuar('base-izquierda')
+			elif comando == 'der':
+				self.acciones.actuar('base-derecha')
+			else:
+				pass
 			
 	def muevePinza(self, comando):
-		self.acciones.tiempo = self.tiempoMovimiento.get()
-		if comando == 'abrir':
-			self.acciones.actuar('abrir-pinza')
-		elif comando == 'cerrar':
-			self.acciones.actuar('cerrar-pinza')
-		else:
-			pass
+		if self.iniciarMovimiento():
+			self.acciones.tiempo = self.tiempoMovimiento.get()
+			if comando == 'abrir':
+				self.acciones.actuar('abrir-pinza')
+			elif comando == 'cerrar':
+				self.acciones.actuar('cerrar-pinza')
+			else:
+				pass
 			
 	def luz(self, comando):
-		self.acciones.tiempo = self.tiempoMovimiento.get()
-		if comando == 'encender':
-			self.acciones.actuar('encender-luz')
-		elif comando == 'apagar':
-			self.acciones.actuar('apagar-luz')
-		else:
-			pass
+		if self.iniciarMovimiento():
+			self.acciones.tiempo = self.tiempoMovimiento.get()
+			if comando == 'encender':
+				self.acciones.actuar('encender-luz')
+			elif comando == 'apagar':
+				self.acciones.actuar('apagar-luz')
+			else:
+				pass
 			
 		
 	def disminuyeAngulo(self, numAngulo):
-		print("Disminuyendo angulo {} con un tiempo {}".format(numAngulo, self.tiempoMovimiento.get()))
-		self.acciones.tiempo = self.tiempoMovimiento.get()	
-		if numAngulo == 3:
-			self.acciones.actuar('bajar-hombro')
-		elif numAngulo == 2:
-			self.acciones.actuar('bajar-codo')
-		elif numAngulo == 1:
-			self.acciones.actuar('bajar-munneca')
-		else:
-			pass
+		if self.iniciarMovimiento():
+			print("Disminuyendo angulo {} con un tiempo {}".format(numAngulo, self.tiempoMovimiento.get()))
+			self.acciones.tiempo = self.tiempoMovimiento.get()	
+			if numAngulo == 3:
+				self.acciones.actuar('bajar-hombro')
+			elif numAngulo == 2:
+				self.acciones.actuar('bajar-codo')
+			elif numAngulo == 1:
+				self.acciones.actuar('bajar-munneca')
+			else:
+				pass
 			
 	def creaAreaControlesExactos(self,frame):
 		self.areaControlesExactos = Frame(frame, cursor='hand2', relief=SUNKEN, bd=2)
@@ -231,42 +282,60 @@ class GUI(Frame):
 	# ------------------------------------------------------------------
 	# Ejecucion en ciclica de las siguientes funciones
 	
-	# actualizaAjustes ->
-	# actualizaVisorImagenOriginal ->
-	# actualizaVisorImagenTratada ->
-	# actualizaVisorImagenBlobs ->
-	# actualizaAjustes -> etc ...
+	# actualizaVisorImagen ->
+	# actualizaVisorAngulos ->
+	
+	# actualizaVisorImagen ->
+	# actualizaVisorAngulos ->
+	# etc ...
 	# ------------------------------------------------------------------
 	
 	
 	def actualizaVisorImagen(self):
 		self.tiempoInicial = time.time()
 		
-		img , self.listaAngulos = self.imagenTratada.capturaTrataYFiltraBlobsDeImagen()
+		img , self.angulosActuales = self.imagenTratada.capturaTrataYFiltraBlobsDeImagen()
 												  
 		photo = ImageTk.PhotoImage(img.getPIL())
 		self.visorImagen.photo = photo
 		self.visorImagen.configure(image=photo)
 		
 		self.tiempoFinal = time.time()
-		self.tiempoDeEjecucion = self.tiempoFinal - self.tiempoInicial
-		#print (self.tiempoDeEjecucion)
+		self.tiempoDeTratamientoImagen = self.tiempoFinal - self.tiempoInicial
+		#print (self.tiempoDeTratamientoImagen)
 		
 		self.visorImagen.after(10, self.actualizaVisorAngulos)
 		
 	
 		
 	def actualizaVisorAngulos(self):
-		if self.listaAngulos == []:
+		actualizarAnterioresYDiferencias = False
+		if self.enMovimiento:
+					tiempoEnMovimiento =  time.time() - self.tiempoInicioMovimiento
+					print("Tiempo en movimiento: {}".format(tiempoEnMovimiento))
+					if tiempoEnMovimiento > self.acciones.tiempo + 2*self.tiempoDeTratamientoImagen:
+						if self.angulosActuales != []:
+							self.finalizarMovimiento()
+							actualizarAnterioresYDiferencias = True
+							print("")
+						
+		if self.angulosActuales == []:
 			for i in range(3):
-				texto = "Angulo {0}: --- grados ".format(str(i+1))
-				self.visorAngulo[i].config(text=texto)
+				texto = "Angulo Actual {0}: --- grados ".format(str(i+1))
+				self.visorAngulosActuales[i].config(text=texto)
 		else:
-			for i, angulo in enumerate(self.listaAngulos):
-				texto = "Angulo {0}: {1:0.0f} grados ".format(str(i+1), angulo)
-				self.visorAngulo[i].config(text=texto)
+			for i, angulo in enumerate(self.angulosActuales):
+				texto = "Angulo Actual {0}: {1:0.0f} grados ".format(str(i+1), angulo)
+				self.visorAngulosActuales[i].config(text=texto)
+				if actualizarAnterioresYDiferencias:
+					texto = "Angulo Anterior {0}: {1:0.0f} grados ".format(str(i+1), self.angulosAnteriores[i])
+					self.visorAngulosAnteriores[i].config(text=texto)
+					texto = "Diferencia Angulos {0}: {1:0.0f} grados ".format(str(i+1), self.diferenciaAngulos[i])
+					self.visorAngulosDiferencia[i].config(text=texto)
 				
 		self.actualizaVisorImagen()
+		
+
 		
 	# ------------------------------------------------------------------
 	# Fin de un ciclo de ejecucion
