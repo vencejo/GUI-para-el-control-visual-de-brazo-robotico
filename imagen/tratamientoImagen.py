@@ -1,4 +1,4 @@
-from SimpleCV import Camera, Display, Image, ColorCurve, Color, cv2
+from SimpleCV import Camera, Display, Image, ColorCurve, Color, cv2, DrawingLayer
 import time
 from math import sqrt, atan2, degrees, pi
 import numpy as np
@@ -23,6 +23,7 @@ class ImagenTratada():
 		self.AreaBlobs = []
  		self.numBlobsCandidatosPorArea = 0
  		self.enDepuracion = False
+ 		self.listaAngulos = []
  		
  	def cargaAjustes(self, archivo='/home/cubie/Guhorus/Brazo mas Vision/GUI-para-el-control-visual-de-brazo-robotico/imagen/MisAjustes/ajustesBuenos.json'):	
 		self.ajustes = Ajustes()
@@ -51,7 +52,14 @@ class ImagenTratada():
 		self.trataImagen()
 		return Image(self.rutaImagenTratada_Fase1)
 		
-	def encuentraYFiltraBlobs(self):
+	def capturaTrataYFiltraBlobsDeImagen(self):
+		img = self.capturaImagen()
+		self.trataImagen()
+		self.encuentraYFiltraBlobs()
+		return (Image(self.rutaImagenBlobs), self.listaAngulos)
+	
+		
+	def encuentraYFiltraBlobs(self, tipoDibujo = 'estructura'):
 		
 		imagenBlobs = Image(self.rutaImagenTratada_Fase2).copy()
 		blobs = imagenBlobs.findBlobs()
@@ -68,13 +76,17 @@ class ImagenTratada():
 			# Busca los blobs de forma circular , los blobs que pasan el filtro
 			# se guardan en la lista self.articulaciones
 			blobs = self.filtroPorForma(blobs)
-	
-			listaAngulos = self.encuentraYDibujaAngulos(imagenBlobs)
-		
-		# La imagen tratada tiene que ser guardada porque sino no funciona
-		# la integracion con Tkinter
-		imagenBlobs.save(self.rutaImagenBlobs)
-		return  listaAngulos
+			
+			if tipoDibujo == 'blobs':
+				self.dibujaBlobs(blobs)
+			elif tipoDibujo == 'estructura':
+				self.listaAngulos = self.encuentraYDibujaAngulos(imagenBlobs)
+				
+			# La imagen tratada tiene que ser guardada porque sino no funciona
+			# la integracion con Tkinter
+			imagenBlobs.save(self.rutaImagenBlobs)
+			return Image(self.rutaImagenBlobs)
+				
 		
 	def filtroPorArea(self, blobs):
 		return blobs.filter((blobs.area()> self.ajustes.areaMin) & (blobs.area()< self.ajustes.areaMax))
@@ -101,12 +113,6 @@ class ImagenTratada():
 				self.articulaciones.append((blob.x, blob.y))
                 self.blobsFiltradosPorForma.append(blob)
                 
-	def capturaTrataYFiltraBlobsDeImagen(self):
-		img = self.capturaImagen()
-		self.trataImagen()
-		listaAngulos = self.encuentraYFiltraBlobs()
-		return (Image(self.rutaImagenBlobs), listaAngulos)
-	
 	def dibujaBlobs(self, blobs):
 		if self.todosLosCandidatos:
 				for blob in self.todosLosCandidatos:
@@ -115,15 +121,31 @@ class ImagenTratada():
 	def encuentraYDibujaAngulos(self, img):
 		""" Ademas de dibujar la estructura de los huesos del brazo
 		devuelve los angulos de dichos huesos con la horizontal """
+		
+		# Pinto ejes de coordenadas
+		img.dl().line((20, img.height - 20), (20, img.height - 60), Color.RED, width=5)
+		img.dl().line((20, img.height - 20), (60, img.height - 20), Color.RED, width=5)
+		textLayer = DrawingLayer((img.width, img.height))
+		textLayer.setFontSize(20)
+		textLayer.text("90 grados", (20, img.height - 80), Color.RED)
+		textLayer.text("0 grados", (70, img.height - 20), Color.RED)
+		img.addDrawingLayer(textLayer)
+				 
 		angulosHuesos = []
 		if self.articulaciones != []:
 			self.articulaciones = aux.ordenaListaPorDistanciaApunto(self.articulaciones, [0,480])
 			puntoInicial = self.articulaciones.pop()
 			img.dl().circle(puntoInicial, 10, Color.BLUE, width=5)
+			numAngulo = 1
 			while self.articulaciones != []:
 				p = self.articulaciones.pop()
 				img.dl().line(puntoInicial, p, Color.BLUE, width=5)
 				img.dl().circle(p, 10, Color.BLUE, width=5)
+				textLayer = DrawingLayer((img.width, img.height))
+				textLayer.setFontSize(24)
+				textLayer.text(str(numAngulo), (p[0] , p[1] ), Color.RED)
+				img.addDrawingLayer(textLayer)
+				numAngulo += 1
 				img.applyLayers()
 				angulosHuesos.append(aux.anguloLineaEntreDosPuntos(p, puntoInicial))
 				puntoInicial = p

@@ -16,6 +16,7 @@ class GUI(Frame):
 	def __init__(self, parent=None):
 		Frame.__init__(self, parent)
 		self.pack(expand=YES, fill=BOTH)
+		self.movimientoLibre = False
 		self.tiempoInicial = 0
 		self.tiempoFinal = 0
 		self.tiempoDeTratamientoImagen = 0
@@ -28,8 +29,8 @@ class GUI(Frame):
 		self.acciones = Acciones()
 		self.creaElementos()
 		self.inicioCicloEjecucion()
-		self.master.title('Ajustes Visuales para el Control Experimental Brazo Robotico')
-		self.master.iconname('Ajustes Visuales')
+		self.master.title('Control Experimental Brazo Robotico')
+		self.master.iconname('Control Experimental Brazo Robotico')
 		
 	def creaElementos(self):
 		self.creaBarraMenus()
@@ -59,30 +60,31 @@ class GUI(Frame):
 	def creaBarraMenus(self):
 		self.menubar = Menu(self.master)
 		self.master.config(menu=self.menubar)
-		self.menuArchivo()
-		self.menuEditar()
-		self.menuImagen()
+		self.menuAjustes()
+		self.menuBrazo()
 		
-	def menuArchivo(self):
+	def menuAjustes(self):
 		miniMenu = Menu(self.menubar)
-		miniMenu.add_command(label='Cargar Ajustes...', command=self.aunPorHacer)
-		miniMenu.add_command(label='Guardar Ajustes...', command=self.aunPorHacer)
+		miniMenu.add_command(label='Cargar Ajustes...', command=self.cargaAjustes)
 		miniMenu.add_command(label='Salir...', command=self.quit)
-		self.menubar.add_cascade(label='Archivo', underline=0, menu=miniMenu)
+		self.menubar.add_cascade(label='Ajustes', underline=0, menu=miniMenu)
 		
-	def menuEditar(self):
+	def menuBrazo(self):
 		miniMenu = Menu(self.menubar)
-		miniMenu.add_command(label='Copiar...', command=self.aunPorHacer)
-		miniMenu.add_command(label='Pegar...', command=self.aunPorHacer)
-		self.menubar.add_cascade(label='Editar', underline=0, menu=miniMenu)
+		miniMenu.add_command(label='Mover solo si se ven los marcadores', command=lambda:self.hacerMovimientoLibre(False))
+		miniMenu.add_command(label='Mover siempre', command=lambda:self.hacerMovimientoLibre(True))
+		self.menubar.add_cascade(label='Brazo', underline=0, menu=miniMenu)
 			
-	def menuImagen(self):
-		miniMenu = Menu(self.menubar)
-		miniMenu.add_command(label='Zoom +...', command=self.aunPorHacer)
-		miniMenu.add_command(label='Zoom -...', command=self.aunPorHacer)
-		miniMenu.add_command(label='Capturar Imagen...', command=self.quit)
-		self.menubar.add_cascade(label='Imagen', underline=0, menu=miniMenu)
+	def hacerMovimientoLibre(self, decision):
+		if decision == True:
+			self.movimientoLibre = True
+		else:
+			self.movimientoLibre = False
 			
+	def cargaAjustes(self):	
+		archivo = askopenfilename(initialdir='/imagen/MisAjustes')
+		self.imagenTratada.cargaAjustes(archivo)
+					
 	def aunPorHacer(self):
 		print "Funcion aun por implementar"
 		
@@ -185,7 +187,10 @@ class GUI(Frame):
 	def iniciarMovimiento(self):
 		""" Solo inicia el movimieno si tiene una lista de angulos actuales buena 
 		Devuelve True si ha podido iniciar el movimiento y false en caso contrario"""
-		if self.angulosActuales == []:
+		if self.movimientoLibre :
+			return True
+			
+		if self.angulosActuales == [] :
 			print("No se puede iniciar el movimiento al no disponer de los angulos iniciales")
 			return False
 		else:
@@ -195,6 +200,9 @@ class GUI(Frame):
 			return True
 		
 	def finalizarMovimiento(self):
+		if self.movimientoLibre :
+			return True
+			
 		self.enMovimiento = False
 		for i in range(3):
 			self.diferenciaAngulos[i] = abs(self.angulosAnteriores[i] - self.angulosActuales[i])
@@ -261,10 +269,52 @@ class GUI(Frame):
 		self.areaControlesExactos = Frame(frame, cursor='hand2', relief=SUNKEN, bd=2)
 		self.areaControlesExactos.pack(side=LEFT, fill=X)
 		self.creaControlesExactos(self.areaControlesExactos)
-		
+	
 	def creaControlesExactos(self, frame):
-		self.controlesExactos = Label(frame, text='Area Controles exactos')
-		self.controlesExactos.pack(side=LEFT, fill=X)
+		self.areaAngulo1 = Frame(frame, cursor='hand2', relief=SUNKEN, bd=2)
+		self.areaAngulo1.pack(side=TOP, fill=X)
+		self.creaControlAngulo1(self.areaAngulo1 )
+		
+		self.ponerSeparadores( frame, 1)
+		
+		self.areaAngulo2 = Frame(frame, cursor='hand2', relief=SUNKEN, bd=2)
+		self.areaAngulo2.pack(side=TOP, fill=X)
+		self.creaControlAngulo2(self.areaAngulo2 )
+		
+		self.ponerSeparadores( frame, 1)
+		
+		self.areaAngulo3 = Frame(frame, cursor='hand2', relief=SUNKEN, bd=2)
+		self.areaAngulo3.pack(side=TOP, fill=X)
+		self.creaControlAngulo3(self.areaAngulo3 )
+		
+			
+	def creaControlAngulo1(self, frame):
+		control1 = Label(frame, text='Angulo1')
+		control1.pack(side=LEFT, fill=X, expand=YES)
+		self.entradaAngulo1 = Entry(frame)
+		self.entradaAngulo1.pack(side=LEFT)
+		self.entradaAngulo1.bind('<Return>', (lambda event: self.imprimeEntradas()))
+		
+	def creaControlAngulo2(self, frame):
+		control2 = Label(frame, text='Angulo2')
+		control2.pack(side=LEFT, fill=X, expand=YES)
+		self.entradaAngulo2 = Entry(frame)
+		self.entradaAngulo2.pack(side=LEFT)
+		self.entradaAngulo2.bind('<Return>', (lambda event: self.imprimeEntradas()))
+		
+	def creaControlAngulo3(self, frame):
+		control3 = Label(frame, text='Angulo3')
+		control3.pack(side=LEFT, fill=X, expand=YES)
+		self.entradaAngulo3 = Entry(frame)
+		self.entradaAngulo3.pack(side=LEFT)
+		self.entradaAngulo3.bind('<Return>', (lambda event: self.imprimeEntradas()))
+		
+	def imprimeEntradas(self):
+		print(self.entradaAngulo1.get())
+		print(self.entradaAngulo2.get())
+		print(self.entradaAngulo3.get())
+		print("")
+			
 		
 	def creaAreaStop(self,frame):
 		self.areaAreaStop = Frame(frame, cursor='hand2', relief=SUNKEN, bd=2)
@@ -272,8 +322,11 @@ class GUI(Frame):
 		self.creaControlStop(self.areaAreaStop)
 		
 	def creaControlStop(self, frame):
-		self.controlStop = Label(frame, text='Stop')
-		self.controlStop.pack(side=BOTTOM)
+		self.controlStop = Button(frame, text='Parar', command=self.acciones.actuar('parar'))
+		self.controlStop.pack(side=RIGHT)
+		texto = "Tiempo tratamiento: {} " .format(self.tiempoDeTratamientoImagen)
+		self.etiquetaTiempo = Label(frame, text =texto) 
+		self.etiquetaTiempo.pack(side = LEFT)
 		
 	
 	def inicioCicloEjecucion(self):
@@ -299,11 +352,6 @@ class GUI(Frame):
 		photo = ImageTk.PhotoImage(img.getPIL())
 		self.visorImagen.photo = photo
 		self.visorImagen.configure(image=photo)
-		
-		self.tiempoFinal = time.time()
-		self.tiempoDeTratamientoImagen = self.tiempoFinal - self.tiempoInicial
-		#print (self.tiempoDeTratamientoImagen)
-		
 		self.visorImagen.after(10, self.actualizaVisorAngulos)
 		
 	
@@ -325,13 +373,19 @@ class GUI(Frame):
 				self.visorAngulosActuales[i].config(text=texto)
 		else:
 			for i, angulo in enumerate(self.angulosActuales):
-				texto = "Angulo Actual {0}: {1:0.0f} grados ".format(str(i+1), angulo)
+				texto = "Angulo Actual {0}: {1:0.1f} grados ".format(str(i+1), angulo)
 				self.visorAngulosActuales[i].config(text=texto)
 				if actualizarAnterioresYDiferencias:
-					texto = "Angulo Anterior {0}: {1:0.0f} grados ".format(str(i+1), self.angulosAnteriores[i])
+					texto = "Angulo Anterior {0}: {1:0.1f} grados ".format(str(i+1), self.angulosAnteriores[i])
 					self.visorAngulosAnteriores[i].config(text=texto)
-					texto = "Diferencia Angulos {0}: {1:0.0f} grados ".format(str(i+1), self.diferenciaAngulos[i])
+					texto = "Diferencia Angulos {0}: {1:0.1f} grados ".format(str(i+1), self.diferenciaAngulos[i])
 					self.visorAngulosDiferencia[i].config(text=texto)
+					
+		self.tiempoFinal = time.time()
+		self.tiempoDeTratamientoImagen = self.tiempoFinal - self.tiempoInicial
+		#print (self.tiempoDeTratamientoImagen)
+		texto = "Tiempo tratamiento: {0:0.2f} segundos " .format(self.tiempoDeTratamientoImagen)
+		self.etiquetaTiempo.config(text =texto) 
 				
 		self.actualizaVisorImagen()
 		
